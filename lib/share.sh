@@ -30,6 +30,12 @@ gen_url() {
             '{v:2,ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",host:$host,path:$path,tls:"tls"}')
         echo "vmess://$(echo -n "$j" | base64 -w 0)"
         ;;
+    vmess-ws)
+        local j; j=$(jq -nc --arg ps "sb-vmess-$addr" --arg add "$addr" --argjson port "$p" \
+            --arg id "$uuid" --arg path "$path" \
+            '{v:2,ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",path:$path}')
+        echo "vmess://$(echo -n "$j" | base64 -w 0)"
+        ;;
     shadowsocks)
         echo "ss://$(echo -n "$ss_method:$ss_password" | base64 -w 0)@$addr:$p#sb-ss"
         ;;

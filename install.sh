@@ -125,13 +125,10 @@ jq -nc '{log:{output:"/var/log/sing-box/access.log",level:"info",timestamp:true}
          outbounds:[{tag:"direct",type:"direct"}]}' > "$SB_MAIN_CONF"
 
 install_service
-
-# 默认添加 VLESS-REALITY
-add reality
 systemctl enable --now sing-box >/dev/null 2>&1
 
 echo
 _green "安装完成!\n"
-msg "运行 $(_cyan sb) 进入菜单, 或 $(_cyan sb info) 查看默认配置."
+msg "运行 $(_cyan sb) 进入菜单, 或 $(_cyan 'sb add r') 添加第一个配置."
 msg "文档: https://github.com/$repo"
 echo

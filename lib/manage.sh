@@ -3,7 +3,7 @@
 
 SB_SS_METHODS=(aes-128-gcm aes-256-gcm chacha20-ietf-poly1305 xchacha20-ietf-poly1305
     2022-blake3-aes-128-gcm 2022-blake3-aes-256-gcm 2022-blake3-chacha20-poly1305)
-SB_PROTO_LIST=(reality hysteria2 tuic trojan vmess-ws-tls shadowsocks anytls)
+SB_PROTO_LIST=(reality hysteria2 tuic trojan vmess-ws-tls vmess-ws shadowsocks anytls)
 
 # ---------- 域名解析校验 (ACME 需要) ----------
 _get_dns_a() {
@@ -42,9 +42,12 @@ add() {
         read -rp "选择协议 [1]: " n
         proto=${SB_PROTO_LIST[${n:-1}-1]}
     else
-        proto=$(normalize_protocol "$1"); shift
+        proto=$(normalize_protocol "$1") || exit 1
+        shift
     fi
     [[ $proto == anytls ]] && require_core 1.12
+    # notls 修饰: vws → vmess-ws (无 TLS, 用于自有反代后端)
+    [[ $SB_NOTLS == 1 && $proto == vmess-ws-tls ]] && proto=vmess-ws
 
     # 重置字段
     port= uuid= password= servername= priv_key= pub_key= host= path=
@@ -74,10 +77,15 @@ add() {
         path=$3; [[ -z $path || $path == auto ]] && path=/$uuid
         test_host_dns
         ;;
+    vmess-ws)
+        port=$1; [[ -z $port || $port == auto ]] && port=$(get_port)
+        uuid=$2; [[ -z $uuid || $uuid == auto ]] && uuid=$(get_uuid)
+        path=$3; [[ -z $path || $path == auto ]] && path=/$uuid
+        ;;
     shadowsocks)
         port=$1;        [[ -z $port || $port == auto ]] && port=$(get_port)
         ss_password=$2; [[ -z $ss_password || $ss_password == auto ]] && ss_password=
-        ss_method=$3;   [[ -z $ss_method || $ss_method == auto ]] && ss_method=2022-blake3-aes-256-gcm
+        ss_method=$3;   [[ -z $ss_method || $ss_method == auto ]] && ss_method=2022-blake3-chacha20-poly1305
         _valid_ss_method "$ss_method" || err "不支持的加密方式: $ss_method"
         if [[ -z $ss_password ]]; then
             if [[ $ss_method == 2022-* ]]; then ss_password=$(get_ss2022_password "$ss_method")
@@ -115,7 +123,7 @@ add() {
 
 # ---------- 更改 ----------
 change() {
-    local name; name=$(resolve_name "$1"); shift
+    local name; name=$(resolve_name "$1") || exit 1; shift
     local opt=${1,,} val=$2
     [[ -z $opt ]] && err "用法: sb change <name> <port|host|path|pass|uuid|method|sni|key> [val|auto]"
     parse_inbound "$name"
@@ -144,7 +152,7 @@ change() {
         ;;
     method)
         [[ $proto_name != shadowsocks ]] && err "仅 Shadowsocks 支持更改加密方式."
-        [[ -z $val || $val == auto ]] && val=2022-blake3-aes-256-gcm
+        [[ -z $val || $val == auto ]] && val=2022-blake3-chacha20-poly1305
         _valid_ss_method "$val" || err "不支持的加密方式: $val"
         ss_method=$val
         ;;
@@ -218,7 +226,7 @@ info() {
         *) list; return ;;
         esac
     else
-        name=$(resolve_name "$name")
+        name=$(resolve_name "$name") || exit 1
     fi
     parse_inbound "$name"
     local ip; ip=$(get_ip)
@@ -250,6 +258,9 @@ info() {
         ;;
     vmess-ws-tls)
         msg "协议     : VMess-WS-TLS"; msg "地址: $addr"; msg "端口: $port"; msg "UUID: $uuid"; msg "路径: $path"; msg "TLS: ACME 自动证书"
+        ;;
+    vmess-ws)
+        msg "协议     : VMess-WS (无 TLS)"; msg "地址: $addr"; msg "端口: $port"; msg "UUID: $uuid"; msg "路径: $path"; msg "TLS: 无 (用于自有反代后端)"
         ;;
     shadowsocks)
         msg "协议     : Shadowsocks"; msg "地址: $addr"; msg "端口: $port"; msg "加密: $ss_method"; msg "密码: $ss_password"
@@ -331,13 +342,15 @@ show_version() {
 # ---------- 主派发 ----------
 main() {
     case $1 in
+    notls | no-tls | no-auto-tls)
+        export SB_NOTLS=1; shift; add "$@" ;;
     add | a) shift; add "$@" ;;
     change | c) shift; change "$@" ;;
     del | d | rm) del "$2" ;;
     info | i) info "$2" ;;
     list | ls) list ;;
-    url) name=$(resolve_name "$2"); parse_inbound "$name"; _cyan "\n$(gen_url)\n" ;;
-    qr) name=$(resolve_name "$2"); parse_inbound "$name"; show_qr ;;
+    url) name=$(resolve_name "$2") || exit 1; parse_inbound "$name"; _cyan "\n$(gen_url)\n" ;;
+    qr) name=$(resolve_name "$2") || exit 1; parse_inbound "$name"; show_qr ;;
     start | stop | restart | status) manage "$1" ;;
     test | t) test_run ;;
     update | u) shift; update "$@" ;;
@@ -348,7 +361,7 @@ main() {
     ip) msg "$(get_ip)" ;;
     pbk) "$SB_BIN" generate reality-keypair ;;
     get-port) msg "$(get_port)" ;;
-    ss2022) msg "$(get_ss2022_password 2022-blake3-aes-256-gcm)" ;;
+    ss2022) msg "$(get_ss2022_password 2022-blake3-chacha20-poly1305)" ;;
     generate | format | check | geoip | geosite | rule-set | tools | completion)
         "$SB_BIN" "$@" ;;
     *) err "无法识别 ($1). 用法: sb help" ;;
