@@ -8,7 +8,7 @@
 
 - **无 Caddy**:域名协议用 sing-box 原生 ACME 自动签证书,无域名协议用自签证书
 - **jq 模板生成 JSON**:每个协议一个 `jq -n` 模板,干净可审计,告别字符串拼接
-- **聚焦现代协议**:VLESS-REALITY、Hysteria2、TUIC、Trojan、VMess-WS-TLS、VMess-WS(notls)、Shadowsocks-2022、AnyTLS
+- **聚焦现代协议**:VLESS-REALITY、VLESS-WS(notls)、Hysteria2、TUIC、Trojan、VMess-WS-TLS、VMess-WS(notls)、Shadowsocks-2022、AnyTLS
 - **多配置并存**:每个入站一个 JSON 片段,`-C` 目录合并,增删互不影响
 - **FHS 路径**:二进制 `/usr/local/bin/sing-box`,`/etc/sing-box` 仅放配置,脚本 `/usr/local/lib/sing-box`,`sb` 直接进 PATH(无需 alias)
 - **仅 systemd**,覆盖主流发行版(Ubuntu/Debian/CentOS/RHEL/Fedora/Arch)
@@ -33,8 +33,9 @@ bash install.sh -l
 
 ```
 sb                       # 交互菜单
-sb add [proto] [args|auto]   # 添加 (proto: reality hysteria2 tuic trojan vmess-ws-tls vmess-ws shadowsocks anytls)
-sb notls vws [port] [uuid] [/path]  # VMess-WS 无 TLS(用于自有反代后端, 等同 sb add vmess-ws)
+sb add [proto] [args|auto]   # 添加 (proto: reality vless-ws hysteria2 tuic trojan vmess-ws-tls vmess-ws shadowsocks anytls)
+sb notls vws [port] [uuid] [/path]        # VMess-WS 无 TLS(自有反代后端, 等同 sb add vmess-ws)
+sb notls vless ws [port] [uuid] [/path]   # VLESS-WS 无 TLS(自有反代后端, 等同 sb add vless-ws)
 sb change <name> <opt> [val|auto]  # 更改 (opt: port host path pass uuid method sni key)
 sb del <name>            # 删除
 sb info [name]           # 查看
@@ -58,6 +59,7 @@ sb add tuic              # TUIC
 sb add ss                # Shadowsocks-2022(默认 2022-blake3-chacha20-poly1305)
 sb add vws example.com   # VMess-WS-TLS(需域名,自动 ACME 证书,监听 443)
 sb add vmess-ws          # VMess-WS 无 TLS(自有反代后端, 等同 sb notls vws)
+sb add vless-ws          # VLESS-WS 无 TLS(自有反代后端, 等同 sb notls vless ws)
 sb add anytls            # AnyTLS(自签)
 sb add anytls auto auto example.com  # AnyTLS + 域名 ACME
 sb info reality-12345
@@ -71,6 +73,7 @@ sb change hy2-12345 port 20000        # 换端口
 | 协议 | 需域名 | TLS | 端口 |
 |---|---|---|---|
 | VLESS-REALITY | 否 | Reality(无证书) | 随机 |
+| VLESS-WS (notls) | 否 | 无(自有反代后端) | 随机 |
 | Hysteria2 | 否 | 自签(客户端 insecure=1) | 随机 |
 | TUIC | 否 | 自签(客户端 insecure=1) | 随机 |
 | Trojan | 否 | 自签(客户端 insecure=1) | 随机 |
@@ -111,7 +114,7 @@ lib/share.sh        # URL/QR/菜单/帮助
 |---|---|---|
 | 自动 TLS | Caddy 反代 | sing-box 原生 ACME(无 Caddy) |
 | JSON 生成 | 字符串拼接 + jq 包装 | jq 模板(`-n --arg`) |
-| 协议 | 20+ 变体(笛卡尔积) | 8 个现代协议 |
+| 协议 | 20+ 变体(笛卡尔积) | 9 个现代协议 |
 | 代码 | `core.sh` 单文件 1830 行 | 5 个小模块 |
 | 路径 | 全堆 `/etc/sing-box` | FHS:二进制 `/usr/local/bin`、`/etc` 仅配置 |
 | init | systemd + OpenRC | systemd |

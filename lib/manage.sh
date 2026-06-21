@@ -3,7 +3,7 @@
 
 SB_SS_METHODS=(aes-128-gcm aes-256-gcm chacha20-ietf-poly1305 xchacha20-ietf-poly1305
     2022-blake3-aes-128-gcm 2022-blake3-aes-256-gcm 2022-blake3-chacha20-poly1305)
-SB_PROTO_LIST=(reality hysteria2 tuic trojan vmess-ws-tls vmess-ws shadowsocks anytls)
+SB_PROTO_LIST=(reality vless-ws hysteria2 tuic trojan vmess-ws-tls vmess-ws shadowsocks anytls)
 
 # ---------- 域名解析校验 (ACME 需要) ----------
 _get_dns_a() {
@@ -42,6 +42,10 @@ add() {
         read -rp "选择协议 [1]: " n
         proto=${SB_PROTO_LIST[${n:-1}-1]}
     else
+        # 支持 "vless ws" / "vmess ws" 两词写法
+        if [[ ($1 == vless || $1 == vmess) && $2 == ws ]]; then
+            set -- "$1-$2" "${@:3}"
+        fi
         proto=$(normalize_protocol "$1") || exit 1
         shift
     fi
@@ -59,6 +63,11 @@ add() {
         uuid=$2;     [[ -z $uuid || $uuid == auto ]] && uuid=$(get_uuid)
         servername=$3; [[ -z $servername || $servername == auto ]] && servername=$(rand_servername)
         read priv_key pub_key <<<"$(get_pbk)"
+        ;;
+    vless-ws)
+        port=$1; [[ -z $port || $port == auto ]] && port=$(get_port)
+        uuid=$2; [[ -z $uuid || $uuid == auto ]] && uuid=$(get_uuid)
+        path=$3; [[ -z $path || $path == auto ]] && path=/$uuid
         ;;
     hysteria2 | trojan)
         port=$1;     [[ -z $port || $port == auto ]] && port=$(get_port)
@@ -246,6 +255,9 @@ info() {
         msg "Flow     : ${flow:-xtls-rprx-vision}"
         msg "SNI      : $servername"
         msg "公钥     : $pub_key"
+        ;;
+    vless-ws)
+        msg "协议     : VLESS-WS (无 TLS)"; msg "地址: $addr"; msg "端口: $port"; msg "UUID: $uuid"; msg "路径: $path"; msg "TLS: 无 (用于自有反代后端)"
         ;;
     hysteria2)
         msg "协议     : Hysteria2"; msg "地址: $addr"; msg "端口: $port"; msg "密码: $password"; msg "TLS: 自签 (客户端需 insecure=1)"

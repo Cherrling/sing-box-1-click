@@ -7,6 +7,7 @@
 normalize_protocol() {
     case "${1,,}" in
     r | reality | vless-reality)    echo reality ;;
+    vless-ws)                       echo vless-ws ;;
     hy | hy2 | hysteria2 | hysteria*) echo hysteria2 ;;
     tuic)                           echo tuic ;;
     trojan)                         echo trojan ;;
@@ -14,7 +15,7 @@ normalize_protocol() {
     vmess-ws)                    echo vmess-ws ;;
     ss | shadowsocks | ss2022)   echo shadowsocks ;;
     anytls)                      echo anytls ;;
-    *) err "无法识别协议 ($1). 可用: reality hysteria2 tuic trojan vmess-ws-tls vmess-ws shadowsocks anytls" ;;
+    *) err "无法识别协议 ($1). 可用: reality vless-ws hysteria2 tuic trojan vmess-ws-tls vmess-ws shadowsocks anytls" ;;
     esac
 }
 
@@ -22,6 +23,7 @@ normalize_protocol() {
 proto_args_hint() {
     case "$1" in
     reality)        echo "[port] [uuid] [sni]" ;;
+    vless-ws)       echo "[port] [uuid] [/path]" ;;
     hysteria2)      echo "[port] [password]" ;;
     tuic)           echo "[port] [uuid]" ;;
     trojan)         echo "[port] [password]" ;;
@@ -100,6 +102,13 @@ gen_inbound_vmess_ws_tls() {
      transport:{type:"ws", path:$path, headers:{host:$host}}}'
 }
 
+gen_inbound_vless_ws() {
+    # 无 TLS (notls): VLESS over WS, 用于自有反代后端, 不需要域名/证书
+    jq -n --arg tag "$1" --argjson port "$port" --arg uuid "$uuid" --arg path "$path" '
+    {tag:$tag, type:"vless", listen:"::", listen_port:$port,
+     users:[{uuid:$uuid}], transport:{type:"ws", path:$path}}'
+}
+
 gen_inbound_vmess_ws() {
     # 无 TLS (notls): 用于自有反代(nginx/caddy)后端, 不需要域名/证书
     jq -n --arg tag "$1" --argjson port "$port" --arg uuid "$uuid" --arg path "$path" '
@@ -130,6 +139,7 @@ gen_inbound_anytls() {
 gen_inbound() {
     case "$1" in
     reality)       gen_inbound_reality "$2" ;;
+    vless-ws)      gen_inbound_vless_ws "$2" ;;
     hysteria2)     gen_inbound_hysteria2 "$2" ;;
     tuic)          gen_inbound_tuic "$2" ;;
     trojan)        gen_inbound_trojan "$2" ;;
@@ -189,7 +199,10 @@ parse_inbound() {
     has_acme=$(jq -r 'if (.tls.acme // .tls.certificate_provider) then 1 else 0 end' <<<"$ib")
 
     case "$proto" in
-    vless) proto_name=reality ;;
+    vless)
+        if [[ $priv_key ]]; then proto_name=reality
+        else proto_name=vless-ws; fi
+        ;;
     vmess)
         if [[ $has_acme == 1 ]]; then proto_name=vmess-ws-tls
         else proto_name=vmess-ws; fi

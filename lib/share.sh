@@ -15,6 +15,9 @@ gen_url() {
     reality)
         echo "vless://$uuid@$addr:$p?encryption=none&security=reality&flow=${flow:-xtls-rprx-vision}&type=tcp&sni=$servername&pbk=$pub_key&fp=chrome#sb-reality"
         ;;
+    vless-ws)
+        echo "vless://$uuid@$addr:$p?encryption=none&type=ws&path=$path#sb-vless-ws"
+        ;;
     hysteria2)
         echo "hysteria2://$password@$addr:$p?insecure=1&alpn=h3#sb-hy2"
         ;;
