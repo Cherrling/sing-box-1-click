@@ -80,13 +80,13 @@ if [[ -n $core_file ]]; then
 elif [[ -n $local_install && -x $SB_BIN ]]; then
     _yellow "已存在本地核心, 跳过下载.\n"
 else
-    [[ -z $core_ver ]] && core_ver=$(_wget -qO- "https://api.github.com/repos/$core_repo/releases/latest?v=$RANDOM" 2>/dev/null |
+    [[ -z $core_ver ]] && core_ver=$(_wget --timeout=15 --tries=2 -qO- "https://api.github.com/repos/$core_repo/releases/latest?v=$RANDOM" 2>/dev/null |
         grep tag_name | grep -Eo 'v[0-9.]+' | head -1)
     core_ver=${core_ver#v}
     [[ -z $core_ver ]] && err "获取 sing-box 最新版本失败."
     _yellow "下载 sing-box v$core_ver ...\n"
-    _wget -qO- "https://github.com/$core_repo/releases/download/v${core_ver}/sing-box-${core_ver}-linux-${arch}.tar.gz" \
-        -O /tmp/sbcore.tar.gz || err "下载核心失败."
+    _wget --timeout=60 --tries=2 -qO /tmp/sbcore.tar.gz \
+        "https://github.com/$core_repo/releases/download/v${core_ver}/sing-box-${core_ver}-linux-${arch}.tar.gz" || err "下载核心失败."
     tar zxf /tmp/sbcore.tar.gz --strip-components 1 -C /usr/local/bin
     rm -f /tmp/sbcore.tar.gz
 fi
@@ -102,7 +102,7 @@ if [[ -n $local_install ]]; then
 else
     _yellow "下载脚本...\n"
     tmp=$(mktemp -d)
-    _wget -qO- "https://github.com/$repo/archive/refs/heads/main.tar.gz" -O "$tmp/sh.tar.gz" || err "下载脚本失败."
+    _wget --timeout=30 --tries=2 -qO "$tmp/sh.tar.gz" "https://codeload.github.com/$repo/tar.gz/refs/heads/main" || err "下载脚本失败."
     tar zxf "$tmp/sh.tar.gz" --strip-components 1 -C "$tmp"
     cp -f "$tmp/sb.sh" /usr/local/lib/sing-box/
     cp -f "$tmp"/lib/*.sh /usr/local/lib/sing-box/lib/

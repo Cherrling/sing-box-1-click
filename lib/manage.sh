@@ -301,8 +301,8 @@ footer() {
 download_core() {
     local ver=$1 arch; arch=$(sb_arch)
     local tmp; tmp=$(mktemp -d)
-    _wget -qO- "https://github.com/$SB_CORE_REPO/releases/download/v${ver}/sing-box-${ver}-linux-${arch}.tar.gz" \
-        -O "$tmp/core.tar.gz" || err "下载核心失败."
+    _wget --timeout=60 --tries=2 -qO "$tmp/core.tar.gz" \
+        "https://github.com/$SB_CORE_REPO/releases/download/v${ver}/sing-box-${ver}-linux-${arch}.tar.gz" || err "下载核心失败."
     tar zxf "$tmp/core.tar.gz" --strip-components 1 -C "$tmp"
     cp -f "$tmp/sing-box" "$SB_BIN"; chmod +x "$SB_BIN"
     rm -rf "$tmp"
@@ -313,7 +313,7 @@ update() {
     case $what in
     core)
         local cur latest; cur=$(sb_core_ver)
-        latest=$(_wget -qO- "https://api.github.com/repos/$SB_CORE_REPO/releases/latest?v=$RANDOM" 2>/dev/null |
+        latest=$(_wget --timeout=15 --tries=2 -qO- "https://api.github.com/repos/$SB_CORE_REPO/releases/latest?v=$RANDOM" 2>/dev/null |
             grep tag_name | grep -Eo 'v[0-9.]+')
         [[ -z $latest ]] && err "获取最新版本失败."
         latest=${latest#v}
@@ -326,7 +326,7 @@ update() {
         ;;
     sh)
         local tmp; tmp=$(mktemp -d)
-        _wget -qO- "https://github.com/$SB_REPO/archive/refs/heads/main.tar.gz" -O "$tmp/sh.tar.gz" || err "下载脚本失败."
+        _wget --timeout=30 --tries=2 -qO "$tmp/sh.tar.gz" "https://codeload.github.com/$SB_REPO/tar.gz/refs/heads/main" || err "下载脚本失败."
         tar zxf "$tmp/sh.tar.gz" --strip-components 1 -C "$tmp"
         cp -f "$tmp/sb.sh" "$SB_LIB_DIR/" 2>/dev/null
         cp -rf "$tmp"/lib/* "$SB_LIB_DIR/lib/" 2>/dev/null
