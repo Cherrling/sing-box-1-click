@@ -43,7 +43,8 @@ gen_url() {
         echo "ss://$(echo -n "$ss_method:$ss_password" | base64 -w 0)@$addr:$p#sb-ss"
         ;;
     anytls)
-        if [[ $anytls_domain ]]; then
+        # 自签 (has_acme!=1) 需 insecure=1; ACME 不需要. 有 domain 时 addr=domain (作 SNI)
+        if [[ $has_acme == 1 ]]; then
             echo "anytls://$password@$addr:$p#sb-anytls"
         else
             echo "anytls://$password@$addr:$p?insecure=1#sb-anytls"

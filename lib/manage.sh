@@ -55,7 +55,7 @@ add() {
 
     # 重置字段
     port= uuid= password= servername= priv_key= pub_key= host= path=
-    ss_method= ss_password= anytls_domain=
+    ss_method= ss_password= anytls_domain= has_acme=
 
     case $proto in
     reality)
@@ -104,10 +104,13 @@ add() {
     anytls)
         anytls_domain=$3; [[ $anytls_domain == auto ]] && anytls_domain=
         password=$2; [[ -z $password || $password == auto ]] && password=$(get_uuid)
-        if [[ $anytls_domain ]]; then
-            port=443; test_host_dns
+        if [[ $anytls_domain && (-z $1 || $1 == auto) ]]; then
+            # 有域名 + 未指定端口 → ACME 自动证书 (必须 443, 需域名解析到本机)
+            port=443; has_acme=1; test_host_dns
         else
+            # 无域名 → 自签 (任意端口); 有域名 + 指定端口 → 自签 + 自定义 SNI (任意端口)
             port=$1; [[ -z $port || $port == auto ]] && port=$(get_port)
+            has_acme=0
         fi
         ;;
     esac
@@ -181,10 +184,11 @@ change() {
         path=$val
         ;;
     host | domain)
-        [[ -z $host ]] && err "此协议无域名."
+        [[ -z $host && -z $anytls_domain ]] && err "此协议无域名."
         [[ -z $val || $val == auto ]] && err "更改域名需指定新域名."
         is_test domain "$val" || err "无效域名: $val"
-        host=$val; anytls_domain=$val; test_host_dns
+        host=$val; anytls_domain=$val
+        [[ $has_acme == 1 ]] && test_host_dns
         ;;
     *) err "不支持的更改项: $opt. 可用: port host path pass uuid method sni key" ;;
     esac
@@ -279,7 +283,13 @@ info() {
         ;;
     anytls)
         msg "协议     : AnyTLS"; msg "地址: $addr"; msg "端口: $port"; msg "密码: $password"
-        [[ $anytls_domain ]] && msg "TLS: ACME 自动证书 ($anytls_domain)" || msg "TLS: 自签 (客户端需 insecure=1)"
+        if [[ $has_acme == 1 ]]; then
+            msg "TLS: ACME 自动证书 ($anytls_domain)"
+        elif [[ $anytls_domain ]]; then
+            msg "TLS: 自签 (SNI: $anytls_domain, 客户端需 insecure=1)"
+        else
+            msg "TLS: 自签 (客户端需 insecure=1)"
+        fi
         ;;
     esac
 

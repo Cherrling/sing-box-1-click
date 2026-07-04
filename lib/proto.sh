@@ -30,7 +30,7 @@ proto_args_hint() {
     vmess-ws-tls)   echo "[domain] [uuid] [/path]" ;;
     vmess-ws)       echo "[port] [uuid] [/path]" ;;
     shadowsocks)    echo "[port] [password] [method]" ;;
-    anytls)         echo "[port] [password] [domain]" ;;
+    anytls)         echo "[port] [password] [domain]  (domain 无端口→ACME 443; domain+端口→自签自定义SNI)" ;;
     esac
 }
 
@@ -124,11 +124,12 @@ gen_inbound_shadowsocks() {
 
 gen_inbound_anytls() {
     local tls
-    if [[ $anytls_domain ]]; then
-        port=443
+    if [[ $has_acme == 1 ]]; then
         tls=$(gen_acme_tls "$anytls_domain")
     else
         tls=$(gen_selfsigned_tls)
+        # 自签 + 指定 SNI 域名: 写入 server_name (端口可自定义, 客户端 insecure=1)
+        [[ $anytls_domain ]] && tls=$(jq --arg d "$anytls_domain" '. + {server_name:$d}' <<<"$tls")
     fi
     jq -n --arg tag "$1" --argjson port "$port" --arg pass "$password" --argjson tls "$tls" '
     {tag:$tag, type:"anytls", listen:"::", listen_port:$port,
@@ -195,7 +196,7 @@ parse_inbound() {
     servername=$(jq -r '.tls.server_name // empty' <<<"$ib")
     priv_key=$(jq -r '.tls.reality.private_key // empty' <<<"$ib")
     pub_key=$(jq -r '.outbounds[]?.tag | select(type=="string" and (startswith("pk-") or startswith("public_key_"))) | sub("^pk-|^public_key_"; "")' <<<"$(cat "$f")")
-    anytls_domain=$(jq -r '.tls.acme.domain[0] // .tls.certificate_provider.domain[0] // empty' <<<"$ib")
+    anytls_domain=$(jq -r '.tls.acme.domain[0] // .tls.certificate_provider.domain[0] // .tls.server_name // empty' <<<"$ib")
     has_acme=$(jq -r 'if (.tls.acme // .tls.certificate_provider) then 1 else 0 end' <<<"$ib")
 
     case "$proto" in
