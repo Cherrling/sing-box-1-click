@@ -194,7 +194,7 @@ parse_inbound() {
     host=$(jq -r '.transport.headers.host // empty' <<<"$ib")
     servername=$(jq -r '.tls.server_name // empty' <<<"$ib")
     priv_key=$(jq -r '.tls.reality.private_key // empty' <<<"$ib")
-    pub_key=$(jq -r '.outbounds[]?.tag | select(startswith("pk-")) | ltrimstr("pk-")' <<<"$(cat "$f")")
+    pub_key=$(jq -r '.outbounds[]?.tag | select(type=="string" and (startswith("pk-") or startswith("public_key_"))) | sub("^pk-|^public_key_"; "")' <<<"$(cat "$f")")
     anytls_domain=$(jq -r '.tls.acme.domain[0] // .tls.certificate_provider.domain[0] // empty' <<<"$ib")
     has_acme=$(jq -r 'if (.tls.acme // .tls.certificate_provider) then 1 else 0 end' <<<"$ib")
 
