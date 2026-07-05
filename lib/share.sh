@@ -117,6 +117,7 @@ sb (sing-box 一键脚本) $SB_SH_VER
 
 其他:
    version / ip / pbk / get-port / ss2022
+   pin [name] [sb|mihomo]         证书 SHA-256 pin (自签协议)
    generate ...                    透传 sing-box 命令
    help                            此帮助
 

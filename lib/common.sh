@@ -138,3 +138,26 @@ ensure_tls_cert() {
     awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' "$tmp" >"$SB_TLS_CER"
     rm -f "$tmp"
 }
+
+# ---------- 证书 pin (SHA-256) ----------
+# 用法: get_cert_pin [sb|mihomo] [cer_path]
+#   sb    = base64(SHA256(SPKI DER))  → sing-box tls.certificate_public_key_sha256 (1.13.0+)
+#   mihomo= hex(SHA256(cert DER))     → mihomo fingerprint (带冒号大写)
+# 仅对自签证书有意义 (ACME 证书会更新, pin 不稳定)
+get_cert_pin() {
+    local fmt="${1:-sb}" cer="${2:-$SB_TLS_CER}"
+    command -v openssl >/dev/null || { warn "openssl 未安装, 无法计算 pin."; return; }
+    [[ -f $cer ]] || return
+    case $fmt in
+    sb)
+        openssl x509 -in "$cer" -pubkey -noout 2>/dev/null |
+            openssl pkey -pubin -outform der 2>/dev/null |
+            openssl dgst -sha256 -binary | base64
+        ;;
+    mihomo)
+        openssl x509 -noout -fingerprint -sha256 -inform pem -in "$cer" 2>/dev/null |
+            sed 's/.*=//'
+        ;;
+    *) err "未知 pin 格式: $fmt (可用: sb mihomo)" ;;
+    esac
+}

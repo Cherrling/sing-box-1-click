@@ -293,6 +293,17 @@ info() {
         ;;
     esac
 
+    # 自签证书协议显示 pin (ACME 证书会更新, pin 不稳定, 不显示)
+    if [[ $proto_name == hysteria2 || $proto_name == tuic || $proto_name == trojan ]] ||
+       { [[ $proto_name == anytls ]] && [[ $has_acme != 1 ]]; }; then
+        local pin_sb pin_mihomo
+        pin_sb=$(get_cert_pin sb) || pin_sb=
+        pin_mihomo=$(get_cert_pin mihomo) || pin_mihomo=
+        if [[ $pin_sb ]]; then
+            msg "Pin(sb)  : $pin_sb  → tls.certificate_public_key_sha256"
+            msg "Pin(mimo): $pin_mihomo  → mihomo fingerprint"
+        fi
+    fi
     local url; url=$(gen_url)
     if [[ $url ]]; then
         msg "链接     :"
@@ -305,6 +316,29 @@ footer() {
     [[ $(is_running) ]] || warn "sing-box 当前未运行 (sb start 启动)."
     msg "----------- END -----------"
     msg "文档: $(msg_ul https://github.com/$SB_REPO)"
+}
+
+# ---------- 证书 pin ----------
+# 输出自签证书的 SHA-256 pin. 用法: sb pin [name] [sb|mihomo]
+#   sb    = base64(SHA256(SPKI DER))  → sing-box tls.certificate_public_key_sha256
+#   mihomo= hex(SHA256(cert DER))     → mihomo fingerprint
+pin() {
+    local name fmt arg
+    fmt=sb
+    for arg in "$@"; do
+        case $arg in
+        sb | mihomo) fmt=$arg ;;
+        *) name=$arg ;;
+        esac
+    done
+    name=$(resolve_name "$name") || exit 1
+    parse_inbound "$name"
+    if [[ $proto_name != hysteria2 && $proto_name != tuic && $proto_name != trojan &&
+          ! ($proto_name == anytls && $has_acme != 1) ]]; then
+        err "$proto_name 非自签证书协议, 无 pin (仅 hy2/tuic/trojan/anytls-自签 有)"
+        return
+    fi
+    get_cert_pin "$fmt"
 }
 
 # ---------- 更新 ----------
@@ -384,6 +418,7 @@ main() {
     pbk) "$SB_BIN" generate reality-keypair ;;
     get-port) msg "$(get_port)" ;;
     ss2022) msg "$(get_ss2022_password 2022-blake3-chacha20-poly1305)" ;;
+    pin) shift; pin "$@" ;;
     generate | format | check | geoip | geosite | rule-set | tools | completion)
         "$SB_BIN" "$@" ;;
     *) err "无法识别 ($1). 用法: sb help" ;;

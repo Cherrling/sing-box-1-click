@@ -61,7 +61,7 @@ install_pkgs() {
         zypper --non-interactive install $need >/dev/null 2>&1
     fi
 }
-install_pkgs wget tar jq qrencode
+install_pkgs wget tar jq qrencode openssl
 
 clear
 echo
