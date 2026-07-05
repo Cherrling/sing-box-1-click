@@ -37,7 +37,7 @@ SB_LOG_DIR=/var/log/sing-box
 SB_SERVICE=/etc/systemd/system/sing-box.service
 SB_CORE_REPO=SagerNet/sing-box
 SB_REPO=Cherrling/sing-box-1-click
-SB_SH_VER=v1.0
+SB_SH_VER=v1.1
 
 # ---------- 环境检测 ----------
 sb_pkg_cmd() { command -v apt-get || command -v yum || command -v dnf || command -v zypper; }

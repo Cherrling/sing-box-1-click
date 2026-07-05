@@ -30,6 +30,7 @@ EOF
 # manage <start|stop|restart|status|enable|disable> [sing-box]
 manage() {
     local action=$1 svc=${2:-sing-box}
+    case $action in s) action=status ;; r) action=restart ;; esac
     case $action in
     start | stop | restart | status | enable | disable)
         systemctl "$action" "$svc"

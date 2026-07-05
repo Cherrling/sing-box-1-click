@@ -110,7 +110,7 @@ sb (sing-box 一键脚本) $SB_SH_VER
    qr [name]                       显示二维码
 
 管理:
-   start|stop|restart|status       服务管理
+   start|stop|restart|status       服务管理 (别名: s=status, r=restart)
    test                            前台测试运行
    update [core|sh]                更新核心/脚本
    uninstall                       卸载

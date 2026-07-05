@@ -407,7 +407,7 @@ main() {
     list | ls) list ;;
     url) name=$(resolve_name "$2") || exit 1; parse_inbound "$name"; _cyan "\n$(gen_url)\n" ;;
     qr) name=$(resolve_name "$2") || exit 1; parse_inbound "$name"; show_qr ;;
-    start | stop | restart | status) manage "$1" ;;
+    start | stop | restart | status | s | r) manage "$1" ;;
     test | t) test_run ;;
     update | u) shift; update "$@" ;;
     uninstall | un) uninstall ;;
