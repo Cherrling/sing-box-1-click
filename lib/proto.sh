@@ -196,7 +196,10 @@ parse_inbound() {
     servername=$(jq -r '.tls.server_name // empty' <<<"$ib")
     priv_key=$(jq -r '.tls.reality.private_key // empty' <<<"$ib")
     pub_key=$(jq -r '.outbounds[]?.tag | select(type=="string" and (startswith("pk-") or startswith("public_key_"))) | sub("^pk-|^public_key_"; "")' <<<"$(cat "$f")")
-    anytls_domain=$(jq -r '.tls.acme.domain[0] // .tls.certificate_provider.domain[0] // .tls.server_name // empty' <<<"$ib")
+    # reality 的 server_name 是伪装 SNI (非连接域名), 不应落入 anytls_domain;
+    # 仅 anytls 自签自定义 SNI 时 server_name 才是真正的连接域名
+    anytls_domain=$(jq -r 'if .tls.reality then empty
+                          else (.tls.acme.domain[0] // .tls.certificate_provider.domain[0] // .tls.server_name // empty) end' <<<"$ib")
     has_acme=$(jq -r 'if (.tls.acme // .tls.certificate_provider) then 1 else 0 end' <<<"$ib")
 
     case "$proto" in
